@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database for Development
+  postgres:
+    image: postgres:15-alpine
+    container_name: twitch-streamer-games-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-twitch_streamer_games_dev}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-network
+
+  # Development Database Management
+  db-studio:
+    image: ghcr.io/drizzle-team/drizzle-studio:latest
+    container_name: twitch-streamer-games-db-studio
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/${DB_NAME:-twitch_streamer_games_dev}
+    ports:
+      - "4983:4983"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev-network
+    profiles:
+      - tools
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  dev-network:
+    driver: bridge
+
